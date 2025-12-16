@@ -1,11 +1,20 @@
 # scripts/build_colmap_db.py
 import argparse
 from pathlib import Path
-import cv2
+try:
+    import cv2  # type: ignore
+except ImportError:
+    cv2 = None
+from PIL import Image
+import sys
 
-from utils.colmap_db_writer import ColmapDatabase
+sys.path.insert(1,'/home/brucewayne/image3d/utils')
+
+from colmap_db_writer import ColmapDatabase
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}
+
+
 
 def main(image_dir: str, db_path: str):
     image_dir = Path(image_dir)
@@ -14,10 +23,14 @@ def main(image_dir: str, db_path: str):
         raise RuntimeError(f"No images found in {image_dir}")
 
     # Read first image to get width/height
-    im0 = cv2.imread(str(images[0]), cv2.IMREAD_GRAYSCALE)
-    if im0 is None:
-        raise RuntimeError(f"Cannot read {images[0]}")
-    h, w = im0.shape[:2]
+    if cv2 is not None:
+        im0 = cv2.imread(str(images[0]), cv2.IMREAD_GRAYSCALE)
+        if im0 is None:
+            raise RuntimeError(f"Cannot read {images[0]}")
+        h, w = im0.shape[:2]
+    else:
+        im0 = Image.open(images[0]).convert("L")
+        w, h = im0.size
 
     # Simple focal guess (works as a baseline)
     # A common heuristic: fx=fy=1.2*max(w,h), cx=w/2, cy=h/2

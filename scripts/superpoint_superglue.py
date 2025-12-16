@@ -1,7 +1,11 @@
 import sys
 from pathlib import Path
 
-import cv2
+try:
+    import cv2  # type: ignore
+except ImportError:
+    cv2 = None
+from PIL import Image
 import numpy as np
 import torch
 
@@ -18,14 +22,19 @@ def load_image_gray(path: Path, resize=None):
     Loads image in grayscale [0,1], optionally resizes.
     Returns numpy array HxW float32.
     """
-    img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
-    if img is None:
-        raise FileNotFoundError(f"Could not read image: {path}")
+    if cv2 is not None:
+        img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            raise FileNotFoundError(f"Could not read image: {path}")
+        if resize is not None:
+            img = cv2.resize(img, resize, interpolation=cv2.INTER_AREA)
+        return img.astype(np.float32) / 255.0
 
+    # Pillow fallback if OpenCV is unavailable.
+    img = Image.open(path).convert("L")
     if resize is not None:
-        img = cv2.resize(img, resize, interpolation=cv2.INTER_AREA)
-
-    return (img.astype(np.float32) / 255.0)
+        img = img.resize(resize, Image.BILINEAR)
+    return np.asarray(img, dtype=np.float32) / 255.0
 
 
 #
@@ -130,4 +139,3 @@ class SuperGlueMatcher:
         mscores = scores0[valid]
 
         return mkpts0, mkpts1, mscores
-

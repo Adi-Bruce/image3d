@@ -184,5 +184,37 @@ class ColmapDatabase:
             (pair_id, matches.shape[0], matches.shape[1], array_to_blob(matches)),
         )
 
+    def add_two_view_geometry(self, image_id1: int, image_id2: int, matches: np.ndarray, config: int = 2):
+        """
+        Insert two-view geometry entry. Config defaults to 2 (CALIBRATED).
+        """
+        if matches.size == 0:
+            return
+        if matches.ndim != 2 or matches.shape[1] != 2:
+            raise ValueError("matches must be (M,2)")
+
+        pair_id = image_ids_to_pair_id(image_id1, image_id2)
+        inlier_matches = matches.astype(np.uint32)
+
+        self.conn.execute(
+            """
+            INSERT OR REPLACE INTO two_view_geometries
+            (pair_id, rows, cols, data, config, F, E, H, qvec, tvec)
+            VALUES(?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                pair_id,
+                inlier_matches.shape[0],
+                inlier_matches.shape[1],
+                array_to_blob(inlier_matches),
+                config,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+        )
+
     def commit(self):
         self.conn.commit()
